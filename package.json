@@ -1,0 +1,35 @@
+{
+  "name": "learning-langchain",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@langchain/community": "^0.2.33",
+    "@langchain/core": "^1.1.7",
+    "@langchain/ollama": "^1.1.0",
+    "@langchain/openai": "^1.2.0",
+    "@langchain/textsplitters": "^1.0.1",
+    "@okoma/text_splitter": "^0.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "hnswlib-node": "^3.0.0",
+    "ignore": "^7.0.5",
+    "langchain": "^1.2.2",
+    "memory-vector-store": "^1.0.10",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.11",
+    "openai": "^6.15.0",
+    "path": "^0.12.7",
+    "pdf-loader": "^1.0.2",
+    "pdf-parse": "^1.1.4",
+    "textsplitter": "^9.6.0"
+  }
+}

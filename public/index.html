@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: #212121;
+            color: #ececec;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2f2f2f;
+            padding: 16px 24px;
+            border-bottom: 1px solid #3e3e3e;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ececec;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .current-pdf {
+            font-size: 13px;
+            color: #8e8e8e;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .current-pdf.active {
+            color: #ab68ff;
+        }
+
+        .pdf-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .message {
+            display: flex;
+            gap: 16px;
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .message.user .avatar {
+            background: #5436da;
+            color: white;
+        }
+
+        .message.assistant .avatar {
+            background: #ab68ff;
+            color: white;
+        }
+
+        .message-content {
+            flex: 1;
+            padding: 12px 0;
+        }
+
+        .message.user .message-content {
+            text-align: right;
+        }
+
+        .message-text {
+            background: #2f2f2f;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .message.user .message-text {
+            background: #5436da;
+        }
+
+        .input-container {
+            background: #2f2f2f;
+            border-top: 1px solid #3e3e3e;
+            padding: 20px 24px;
+        }
+
+        .input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .attach-button {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #3e3e3e;
+            border: 1px solid #4e4e4e;
+            color: #ececec;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .attach-button:hover {
+            background: #4e4e4e;
+            border-color: #5436da;
+        }
+
+        .attach-button.active {
+            background: #5436da;
+            border-color: #5436da;
+        }
+
+        .attach-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .input-box {
+            flex: 1;
+            background: #3e3e3e;
+            border: 1px solid #4e4e4e;
+            border-radius: 24px;
+            padding: 12px 20px;
+            color: #ececec;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            min-height: 48px;
+            max-height: 200px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-box:focus {
+            border-color: #5436da;
+        }
+
+        .input-box::placeholder {
+            color: #8e8e8e;
+        }
+
+        .send-button {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #5436da;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover {
+            background: #6747e8;
+        }
+
+        .send-button:disabled {
+            background: #3e3e3e;
+            cursor: not-allowed;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #212121;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4e4e4e;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5e5e5e;
+        }
+
+        /* loading styles */
+        .message.loading .message-text {
+            font-style: italic;
+            opacity: 0.95;
+        }
+
+        .message-text.loading {
+            min-width: 24px;
+            text-align: left;
+        }
+
+        /* PDF Upload Loader */
+        .upload-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(33, 33, 33, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .upload-overlay.active {
+            display: flex;
+        }
+
+        .upload-loader {
+            text-align: center;
+            color: #ececec;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #3e3e3e;
+            border-top: 4px solid #5436da;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .upload-loader h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .upload-loader p {
+            font-size: 14px;
+            color: #8e8e8e;
+        }
+
+        .upload-progress {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #ab68ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Chat Assistant</h1>
+        <div class="header-right">
+            <div class="current-pdf" id="currentPdf">
+                <svg class="pdf-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span id="pdfName">No PDF loaded</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <div class="message assistant">
+            <div class="avatar">AI</div>
+            <div class="message-content">
+                <div class="message-text">
+                    Hello! I'm your AI assistant. Upload a PDF using the 📎 button to ask questions about it, or ask me anything for general knowledge!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <div class="input-wrapper">
+            <input type="file" id="fileInput" accept=".pdf" />
+            <button class="attach-button" id="attachButton" title="Attach PDF">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                </svg>
+            </button>
+            <textarea class="input-box" id="messageInput" placeholder="Send a message..." rows="1"></textarea>
+            <button class="send-button" id="sendButton">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Upload Loader Overlay -->
+    <div class="upload-overlay" id="uploadOverlay">
+        <div class="upload-loader">
+            <div class="spinner"></div>
+            <h3>Uploading PDF</h3>
+            <p id="uploadStatus">Processing your document...</p>
+            <div class="upload-progress" id="uploadProgress"></div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const attachButton = document.getElementById('attachButton');
+        const fileInput = document.getElementById('fileInput');
+        const pdfNameSpan = document.getElementById('pdfName');
+        const currentPdfDiv = document.getElementById('currentPdf');
+        const uploadOverlay = document.getElementById('uploadOverlay');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const uploadProgress = document.getElementById('uploadProgress');
+
+        let currentPdfFile = null;
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        messageInput.addEventListener('input', function () {
+            autoResize(this);
+        });
+
+        messageInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        // File attachment handling
+        attachButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                alert('Please select a PDF file');
+                fileInput.value = ''; // Reset file input
+                return;
+            }
+
+            // Show loader overlay
+            uploadOverlay.classList.add('active');
+            uploadStatus.textContent = 'Uploading PDF...';
+            uploadProgress.textContent = `File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+
+            currentPdfFile = file;
+
+            // Upload the PDF to the server
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            try {
+                attachButton.disabled = true;
+                sendButton.disabled = true;
+                messageInput.disabled = true;
+
+                uploadStatus.textContent = 'Processing PDF...';
+
+                const response = await fetch('/upload-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    uploadStatus.textContent = 'Creating embeddings...';
+                    
+                    // Small delay to show the final status
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Update UI
+                    pdfNameSpan.textContent = file.name;
+                    currentPdfDiv.classList.add('active');
+                    attachButton.classList.add('active');
+                    
+                    // Hide loader
+                    uploadOverlay.classList.remove('active');
+                    
+                    // Show success message
+                    addMessage(`✅ PDF "${file.name}" uploaded successfully! You can now ask questions about it.`, 'assistant');
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                uploadOverlay.classList.remove('active');
+                alert('Failed to upload PDF: ' + error.message);
+                currentPdfFile = null;
+                attachButton.classList.remove('active');
+            } finally {
+                attachButton.disabled = false;
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                fileInput.value = ''; // Reset file input for next upload
+            }
+        });
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            console.log("message:", message);
+            if (!message) return;
+
+            addMessage(message, 'user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // show loading assistant bubble and animate dots
+            const loadingTextDiv = addMessage('...', 'assistant', true);
+            let dots = 0;
+            const loadingInterval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                loadingTextDiv.textContent = '.'.repeat(dots || 1);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 350);
+
+            sendButton.disabled = true;
+            messageInput.disabled = true;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                // if (!response.ok) {
+                //     throw new Error(`Server error: ${response.status}`);
+                // }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                let result = "";
+
+                // Read the response stream and update the assistant bubble
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    // decode incrementally and update the loading bubble
+                    result += decoder.decode(value, { stream: true });
+                    loadingTextDiv.textContent = result;
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+
+                // flush any remaining bytes from the decoder
+                result += decoder.decode();
+
+                clearInterval(loadingInterval);
+                loadingTextDiv.textContent = result || 'No reply from server';
+                loadingTextDiv.classList.remove('loading');
+                loadingTextDiv.parentElement.parentElement.classList.remove('loading');
+            } catch (err) {
+                console.error('Fetch error:', err);
+                clearInterval(loadingInterval);
+                loadingTextDiv.textContent = 'Error contacting server. Check console and CORS settings.';
+                loadingTextDiv.classList.remove('loading');
+                loadingTextDiv.parentElement.parentElement.classList.remove('loading');
+            } finally {
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+            }
+        }
+
+        // updated addMessage to optionally return the text div for updates
+        function addMessage(text, sender, isLoading = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}` + (isLoading ? ' loading' : '');
+
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = sender === 'user' ? 'U' : 'AI';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text' + (isLoading ? ' loading' : '');
+            textDiv.textContent = text;
+
+            contentDiv.appendChild(textDiv);
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            return textDiv;
+        }
+    </script>
+</body>
+
+</html>
