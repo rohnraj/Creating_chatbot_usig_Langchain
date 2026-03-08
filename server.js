@@ -159,6 +159,7 @@ console.log("messageStore11:", messageStore);
     : await chainWithHistory.stream({ question: userMessage }, { configurable: { sessionId: "user1" } });
 
   // ensure streaming headers are flushed to client immediately
+  res.setHeader("Transfer-Encoding", "chunked");
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -242,7 +243,6 @@ app.post('/upload-pdf', upload.single('pdf'), async (req, res) => {
 app.post('/chat', async (req, res) => {
   const userMessage = req.body?.message ?? '';
   try {
-    res.setHeader("Transfer-Encoding", "chunked");
     init(userMessage, res);
   } catch (error) {
     console.error('Error processing request:', error);
