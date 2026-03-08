@@ -84,7 +84,7 @@ async function initVectorStore() {
 // await initVectorStore();
 
 // embeddings vector store
-async function init(userMessage, res) {
+async function init(userMessage, sessionId, res) {
   let context = "";
   let promptTemplate;
 
@@ -155,8 +155,8 @@ Response should not be offensive.`],
 console.log("messageStore11:", messageStore);
   // get stream with context (if available) and question
   const stream = retriever && currentPdfName
-    ? await chainWithHistory.stream({ context: context, question: userMessage }, { configurable: { sessionId: "user1" } })
-    : await chainWithHistory.stream({ question: userMessage }, { configurable: { sessionId: "user1" } });
+    ? await chainWithHistory.stream({ context: context, question: userMessage }, { configurable: { sessionId } })
+    : await chainWithHistory.stream({ question: userMessage }, { configurable: { sessionId } });
 
   // ensure streaming headers are flushed to client immediately
   res.setHeader("Transfer-Encoding", "chunked");
@@ -242,8 +242,9 @@ app.post('/upload-pdf', upload.single('pdf'), async (req, res) => {
 // chat endpoint
 app.post('/chat', async (req, res) => {
   const userMessage = req.body?.message ?? '';
+  const sessionId = req.body?.sessionId ?? 'default';
   try {
-    init(userMessage, res);
+    init(userMessage, sessionId, res);
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).json({ error: error?.message ?? 'Internal Server Error' });

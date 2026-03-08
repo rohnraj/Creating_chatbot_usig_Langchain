@@ -5,8 +5,8 @@ node_modules/
 # Environment variables
 .env
 
-# Uploaded files
-uploads/
+# Uploaded files (runtime — created by Express on first run)
+backend/uploads/
 
 # OS files
 .DS_Store
@@ -27,3 +27,7 @@ npm-debug.log*
 # Build files
 dist/
 build/
+
+# Next.js
+frontend/.next/
+frontend/out/
