@@ -58,9 +58,23 @@ export default function Header({ pdfName, user, onSignIn, onLogout }: HeaderProp
           </div>
         )}
 
-        {/* Auth: UserMenu if signed in, Sign In button if guest */}
+        {/* Auth: avatar + sign-out if logged in, sign-in button if guest */}
         {user ? (
-          <UserMenu user={user} onLogout={onLogout} />
+          <div className="flex items-center gap-2">
+            <UserMenu user={user} onLogout={onLogout} />
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-400 border border-red-400/25 hover:bg-red-400/10 hover:border-red-400/50 active:scale-95 transition-all"
+              title="Sign out"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sign out
+            </button>
+          </div>
         ) : (
           <button
             onClick={onSignIn}

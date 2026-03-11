@@ -8,6 +8,8 @@ import UploadOverlay from "@/components/UploadOverlay";
 import Sidebar, { ConversationMeta } from "@/components/Sidebar";
 import LoginModal from "@/components/auth/LoginModal";
 import { AuthUser } from "@/components/auth/UserMenu";
+import Toaster from "@/components/Toaster";
+import { useToast } from "@/hooks/useToast";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,6 +73,8 @@ function loadActiveId(convs: Conversation[]): string {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
+  const { toasts, showToast, dismiss } = useToast();
+
   // Lazy initialisers read from localStorage on the very first render
   // (runs only on the client; typeof window check guards SSR).
   const [conversations, setConversations] = useState<Conversation[]>(() => {
@@ -88,6 +92,8 @@ export default function ChatPage() {
 
   // ── Auth state ─────────────────────────────────────────────────────────────
   const [user, setUser] = useState<AuthUser | null>(null);
+  // true while /api/me is in-flight — suppresses the modal to avoid a flash
+  const [authChecking, setAuthChecking] = useState(true);
   // Show modal on first load unless the user previously chose "guest"
   const [showLoginModal, setShowLoginModal] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -105,6 +111,22 @@ export default function ChatPage() {
   // Derived: active conversation
   const activeConv = conversations.find((c) => c.id === activeId)
     ?? conversations[0];
+
+  // ── Restore session from accessToken cookie on every page load ────────────
+  // The cookie is httpOnly (invisible to JS), so we ask /api/me to verify it.
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setUser(data.user);
+          setShowLoginModal(false); // already authenticated — hide modal
+        }
+      })
+      .catch(() => { /* network error — treat as unauthenticated */ })
+      .finally(() => setAuthChecking(false));
+  }, []);
 
   // ── Persist to localStorage on every change ────────────────────────────────
 
@@ -130,28 +152,35 @@ export default function ChatPage() {
   // ── Auth handlers ──────────────────────────────────────────────────────────
 
   async function handleGoogleLogin() {
-    // Placeholder — will be replaced with NextAuth signIn("google") call
-    console.log("Google login — connect NextAuth");
+    showToast("Google login coming soon.", "info");
   }
 
   async function handleGithubLogin() {
-    // Placeholder — will be replaced with NextAuth signIn("github") call
-    console.log("GitHub login — connect NextAuth");
+    showToast("GitHub login coming soon.", "info");
   }
 
   function handleContinueAsGuest() {
     localStorage.setItem("auth-guest-mode", "true");
     setShowLoginModal(false);
+    showToast("Continuing as guest. Chat history is browser-only.", "info");
   }
 
   function handleSignIn() {
     setShowLoginModal(true);
   }
 
-  function handleLogout() {
-    setUser(null);
-    localStorage.removeItem("auth-guest-mode");
-    setShowLoginModal(true);
+  async function handleLogout() {
+    try {
+      await fetch("/api/logout", { method: "GET" });
+    } catch {
+      // Even if the network call fails, clear client state so the UI is consistent
+    } finally {
+      // Always clear frontend state regardless of API result
+      setUser(null);
+      localStorage.removeItem("auth-guest-mode");
+      setShowLoginModal(true);
+      showToast("You've been signed out.", "info");
+    }
   }
 
   // ── Conversation management ────────────────────────────────────────────────
@@ -310,15 +339,16 @@ export default function ChatPage() {
 
       setUploadVisible(false);
       setPdfName(file.name);
+      showToast(`"${file.name}" uploaded and ready.`, "success");
 
       addMessage({
         role: "assistant",
-        content: `✅ PDF "${file.name}" uploaded successfully! You can now ask questions about it.`,
+        content: `PDF "${file.name}" uploaded successfully! You can now ask questions about it.`,
       });
     } catch (err: unknown) {
       setUploadVisible(false);
       const msg = err instanceof Error ? err.message : "Unknown error";
-      alert(`Failed to upload PDF: ${msg}`);
+      showToast(`Upload failed: ${msg}`, "error");
     } finally {
       setIsDisabled(false);
     }
@@ -433,11 +463,35 @@ export default function ChatPage() {
         status={uploadStatus}
       />
 
-      {/* Login modal — shown on first visit or after sign-out */}
-      {showLoginModal && (
+      <Toaster toasts={toasts} dismiss={dismiss} />
+
+      {/* Login modal — shown on first visit or after sign-out (hidden while auth cookie is being checked) */}
+      {!authChecking && showLoginModal && (
         <LoginModal
           onGoogleLogin={handleGoogleLogin}
           onGithubLogin={handleGithubLogin}
+          onEmailSignIn={async (email, password) => {
+            const res = await fetch("/api/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? "Login failed.");
+            showToast(`Welcome back, ${data?.user?.email}!`, "success");
+            window.location.reload();
+          }}
+          onEmailSignUp={async (name, email, password) => {
+            const res = await fetch("/api/signup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name, email, password }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? "Sign-up failed.");
+            // Do not auto-login — modal switches to Sign In tab
+            showToast("Account created! Please sign in to continue.", "success");
+          }}
           onContinueAsGuest={handleContinueAsGuest}
         />
       )}
