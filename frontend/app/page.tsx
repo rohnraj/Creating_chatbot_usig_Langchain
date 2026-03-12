@@ -10,6 +10,7 @@ import LoginModal from "@/components/auth/LoginModal";
 import { AuthUser } from "@/components/auth/UserMenu";
 import Toaster from "@/components/Toaster";
 import { useToast } from "@/hooks/useToast";
+import { signIn, signOut, useSession } from "next-auth/react"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ function loadActiveId(convs: Conversation[]): string {
 
 export default function ChatPage() {
   const { toasts, showToast, dismiss } = useToast();
+  const { data: session } = useSession();
 
   // Lazy initialisers read from localStorage on the very first render
   // (runs only on the client; typeof window check guards SSR).
@@ -92,8 +94,6 @@ export default function ChatPage() {
 
   // ── Auth state ─────────────────────────────────────────────────────────────
   const [user, setUser] = useState<AuthUser | null>(null);
-  // true while /api/me is in-flight — suppresses the modal to avoid a flash
-  const [authChecking, setAuthChecking] = useState(true);
   // Show modal on first load unless the user previously chose "guest"
   const [showLoginModal, setShowLoginModal] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -112,22 +112,6 @@ export default function ChatPage() {
   const activeConv = conversations.find((c) => c.id === activeId)
     ?? conversations[0];
 
-  // ── Restore session from accessToken cookie on every page load ────────────
-  // The cookie is httpOnly (invisible to JS), so we ask /api/me to verify it.
-
-  useEffect(() => {
-    fetch("/api/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.user) {
-          setUser(data.user);
-          setShowLoginModal(false); // already authenticated — hide modal
-        }
-      })
-      .catch(() => { /* network error — treat as unauthenticated */ })
-      .finally(() => setAuthChecking(false));
-  }, []);
-
   // ── Persist to localStorage on every change ────────────────────────────────
 
   useEffect(() => {
@@ -144,15 +128,30 @@ export default function ChatPage() {
 
   // ── Scroll to bottom when active conversation messages change ──────────────
 
-  // Scroll to bottom whenever messages change in the active conversation
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages]);
 
+  // ── Sync Google SSO session → user state ───────────────────────────────────
+  // When NextAuth finishes the Google OAuth flow and returns to the page,
+  // session.user is populated. Use it directly to mark the user as logged in.
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      setUser({
+        name: session.user.name ?? session.user.email.split("@")[0],
+        email: session.user.email,
+        image: session.user.image ?? undefined,
+      });
+      setShowLoginModal(false);
+      localStorage.removeItem("auth-guest-mode");
+    }
+  }, [session]);
+
   // ── Auth handlers ──────────────────────────────────────────────────────────
 
   async function handleGoogleLogin() {
-    showToast("Google login coming soon.", "info");
+    await signIn("google", { callbackUrl: "/" });
   }
 
   async function handleGithubLogin() {
@@ -170,17 +169,14 @@ export default function ChatPage() {
   }
 
   async function handleLogout() {
-    try {
-      await fetch("/api/logout", { method: "GET" });
-    } catch {
-      // Even if the network call fails, clear client state so the UI is consistent
-    } finally {
-      // Always clear frontend state regardless of API result
-      setUser(null);
-      localStorage.removeItem("auth-guest-mode");
-      setShowLoginModal(true);
-      showToast("You've been signed out.", "info");
-    }
+    // Clear custom JWT cookies (email/password users)
+    try { await fetch("/api/logout", { method: "GET" }); } catch { /* ignore */ }
+    // Sign out of NextAuth (Google SSO users)
+    if (session) { await signOut({ redirect: false }); }
+    setUser(null);
+    localStorage.removeItem("auth-guest-mode");
+    setShowLoginModal(true);
+    showToast("You've been signed out.", "info");
   }
 
   // ── Conversation management ────────────────────────────────────────────────
@@ -465,8 +461,8 @@ export default function ChatPage() {
 
       <Toaster toasts={toasts} dismiss={dismiss} />
 
-      {/* Login modal — shown on first visit or after sign-out (hidden while auth cookie is being checked) */}
-      {!authChecking && showLoginModal && (
+      {/* Login modal — shown on first visit or after sign-out */}
+      {showLoginModal && (
         <LoginModal
           onGoogleLogin={handleGoogleLogin}
           onGithubLogin={handleGithubLogin}
@@ -478,8 +474,13 @@ export default function ChatPage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error ?? "Login failed.");
-            showToast(`Welcome back, ${data?.user?.email}!`, "success");
-            window.location.reload();
+            setUser({
+              name: data.user.name,
+              email: data.user.email,
+            });
+            setShowLoginModal(false);
+            localStorage.removeItem("auth-guest-mode");
+            showToast(`Welcome back, ${data.user.name}!`, "success");
           }}
           onEmailSignUp={async (name, email, password) => {
             const res = await fetch("/api/signup", {

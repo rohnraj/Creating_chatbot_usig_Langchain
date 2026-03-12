@@ -19,7 +19,14 @@ export async function POST(request: Request) {
         }
         getAccessToken(userExist);
         getRefreshToken(userExist);
-        return NextResponse.json({ message: 'Login successful' }, { status: 200 });
+        return NextResponse.json({
+            message: 'Login successful',
+            user: {
+                id: userExist.id,
+                name: userExist.name ?? userExist.email.split("@")[0],
+                email: userExist.email,
+            },
+        }, { status: 200 });
 
     } catch (error) {
         return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
