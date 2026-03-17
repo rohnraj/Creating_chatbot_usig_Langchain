@@ -2,9 +2,9 @@ import { cookies } from "next/headers";
 import { getUserDetails } from "../services/loignServices";
 import jwt from "jsonwebtoken";
 
-export const getAccessToken = (user) => {
+export const getAccessToken = async (user) => {
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set("accessToken",
         token,
         {
@@ -16,9 +16,9 @@ export const getAccessToken = (user) => {
     return token;
 };
 
-export const getRefreshToken = (user) => {
+export const getRefreshToken = async (user) => {
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set("refreshToken",
         token,
         {

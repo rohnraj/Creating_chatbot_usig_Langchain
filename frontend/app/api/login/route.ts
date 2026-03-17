@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { getUserDetails } from "@/services/loignServices";
 import { getAccessToken, getRefreshToken } from "@/utils/utility";
+import sendToQueue from "@/lib/rabbitmq";
 
 
 export async function POST(request: Request) {
@@ -17,8 +18,16 @@ export async function POST(request: Request) {
         if (!passwordMatch) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
+
+        await sendToQueue({
+            email,
+            subject: "Welcome!",
+            text: "Thanks for registering 🎉",
+        });
+
         getAccessToken(userExist);
         getRefreshToken(userExist);
+
         return NextResponse.json({
             message: 'Login successful',
             user: {
