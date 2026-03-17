@@ -1,0 +1,35 @@
+# ── Secrets & local config ────────────────────────────────────────────────────
+**/.env
+**/.env.*
+!**/.env.example
+
+# ── Node dependencies (rebuilt inside Docker) ─────────────────────────────────
+**/node_modules
+
+# ── Next.js build output (built inside Docker) ────────────────────────────────
+**/.next
+
+# ── Uploaded files (runtime data, not part of the image) ─────────────────────
+**/uploads
+
+# ── Git & editor ─────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+*.swp
+*.swo
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+**/*.log
+**/logs
+
+# ── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Docker files (no need to copy into the image itself) ─────────────────────
+Dockerfile
+.dockerignore
+docker-compose*.yml

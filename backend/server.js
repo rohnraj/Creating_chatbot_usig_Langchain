@@ -42,9 +42,11 @@ import { RunnableWithMessageHistory } from "@langchain/core/runnables";
 
 
 // ***initialize embeddings
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+
 const embeddings = new OllamaEmbeddings({
-  model: "nomic-embed-text", // or nomic-embed-text (recommended)
-  baseUrl: "http://localhost:11434",
+  model: "nomic-embed-text",
+  baseUrl: OLLAMA_BASE_URL,
 });
 
 // Initialize with no PDF by default
@@ -182,7 +184,7 @@ const outputParser = new StringOutputParser();
 // our ollama chat model
 const model = new ChatOllama({
   model: "mistral",
-  baseUrl: "http://localhost:11434"
+  baseUrl: OLLAMA_BASE_URL,
 });
 
 // const prompt = ChatPromptTemplate.fromTemplate("Tell me a joke about {topic}.");

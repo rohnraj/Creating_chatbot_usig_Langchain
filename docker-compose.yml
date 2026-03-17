@@ -1,0 +1,46 @@
+services:
+
+  # ── Ollama (LLM server) ─────────────────────────────────────────────────────
+  # Uses the official pre-built image from Docker Hub — no 1.2 GB curl download
+  # during build. Models are stored in the `ollama_data` named volume so they
+  # survive container restarts without being re-downloaded.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      retries: 12        # up to 2 min for Ollama to initialise
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── App (Express backend + Next.js frontend) ────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4001:4001"   # Next.js frontend
+      - "8080:8080"   # Express backend
+    environment:
+      # Point the backend at the ollama service over the Docker network
+      OLLAMA_BASE_URL: http://ollama:11434
+
+      # ── Auth / DB — supply these via a .env file or -e flags ──────────────
+      DATABASE_CONNECTION_STRING: ${DATABASE_CONNECTION_STRING}
+      JWT_SECRET: ${JWT_SECRET}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:4001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      ollama:
+        condition: service_healthy   # wait until Ollama passes its health-check
+    restart: unless-stopped
+
+volumes:
+  ollama_data:   # persists downloaded models across container restarts
